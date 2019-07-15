@@ -38,10 +38,40 @@ f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_radecz_MIMB_SFRHaplha_23cut
 data1 = f1[1].data
 dL = cosmo.luminosity_distance(data1['Z'])
 dL = dL.value
-MI_noK = data1['m_i'] - 25. - 5.*np.log10(dL) - 5*np.log10(h) # 5logh units if mock
-Kfc = data1['m_i'] - data1['M_I'] -25. - 5*np.log10(dL) - 5*np.log10(h)
-K_binned = binning_function(data1['Z'],Kfc,percentile=16)
+MI_noK = data1['SDSS_i'] - 25. - 5.*np.log10(dL) - 5*np.log10(h) # 5logh units if mock
+Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) - 5*np.log10(h)
+# =============================================================================
+# Colors based in u-g sdss magnitudes
+# =============================================================================
+cl = 0.25
+cu = 1.75
+Nc = 6
+cbins = np.linspace(cl,cu,Nc+1,endpoint=True)
+u_g = data1['SDSS_U'] - data1['SDSS_G']
+_,K_color_bins = binning_function(u_g,Kfc,cl,cu,Nc,percentile=16)
+#
+Ns = 16
+zmin = 0.11
+zmax = 0.9
+zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
+Kz_per_color = []
+for i,Ki in enumerate(K_color_bins):
+    Z_binned = data1['Z'][(u_g > cbins[i])&(u_g < cbins[i+1])]
+    K_bin, _ = binning_function(Z_binned,Ki,zmin,zmax,Ns,percentile=16)
+    Kz_per_color.append(K_bin)
+K_binned, _ = binning_function(data1['Z'],Kfc,zmin,zmax,Ns,percentile=16)
 Kmedian = K_binned[:,3]
+#
+# =============================================================================
+# # =============================================================================
+#  f,ax = plt.subplots(1,1,figsize=(7,6))
+#  ax.scatter(data1['Z'],Kfc,s=4,c='k')
+#  for i in range(len(Kz_per_color)):
+#      ax.plot(Kz_per_color[i][:,0],Kz_per_color[i][:,3],'-')
+#  plt.show()
+# # 
+# =============================================================================
+# =============================================================================
 Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')
 # =============================================================================
 # 
@@ -54,10 +84,10 @@ Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')
  # %load 92 107
 Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min())
 Omega_rad = Omega_deg * (np.pi/180.)**2.
-Ns = 9
+Ns = 8
 zmin = 0.11
 zmax = 0.9
-zbins = np.linspace(zmin,zmax,Ns,endpoint=True)#### redshift bins
+zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 b = 31 #N of bins LF
 M_min = -16.
 M_max = -23.5

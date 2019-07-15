@@ -5,11 +5,15 @@
 import numpy as np
 #import sys
 
-def binning_function(X,Y,percentile=50):
+def binning_function(X,Y,bl,bu,Nb,percentile=50):
+    """
+    binning scattered data between bl, bu with Nb number of bins.
+    
+    """
     p = percentile 
-    bl = 0.11#sys.argv[1]
-    bu = 0.9#sys.argv[2]
-    Nb = 16#sys.argv[3]
+    #bl = 0.11#sys.argv[1]
+    #bu = 0.9#sys.argv[2]
+    #Nb = 16#sys.argv[3]
     BINS = np.linspace(bl,bu,Nb+1)#np.linspace(0.01,0.95,5)
     b = BINS[:-1] + np.diff(BINS)[0]/2.#bin centre
     bmedian = np.zeros_like(b)
@@ -18,9 +22,11 @@ def binning_function(X,Y,percentile=50):
     pert = np.zeros_like(b)
     perb = np.zeros_like(b)
     N = np.zeros_like(b)
+    Ybn = []
     for i in np.arange(Nb):
         xx = X[(X>BINS[i])&(X<BINS[i+1])]#x axis
         yy = Y[(X>BINS[i])&(X<BINS[i+1])]
+        Ybn.append(yy)
         bmedian[i] = np.median(yy)
         xmean[i] = np.mean(xx)
         bmean[i] = np.mean(yy)
@@ -28,7 +34,7 @@ def binning_function(X,Y,percentile=50):
         perb[i] = np.percentile(yy,100.-p)
         N[i] = len(yy)
     S = np.array([b,xmean,bmean,bmedian,pert,perb,N]).T
-    return S
+    return S,Ybn
 
 # %load 39
 # %load 24
