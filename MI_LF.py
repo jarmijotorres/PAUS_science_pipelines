@@ -14,6 +14,7 @@ from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
 from scipy.optimize import ridder
 from binning_data import binning_function
+from glob import glob
 h = cosmo.h
 
 
@@ -33,7 +34,7 @@ def dcomv(z):
 #     return np.log10(0.4*np.log(10)*ps*(10**(0.4*(Ms-M)))**(alpha+1)*np.exp(-10**(0.4*(Ms-M))))
 # 
 # =============================================================================
-f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nofrf.fits')
+f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_MBlue_SDSSphot_mi23cut.fit')
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
 dL = cosmo.luminosity_distance(data1['Z'])
@@ -59,20 +60,33 @@ for i,Ki in enumerate(K_color_bins):
     Z_binned = data1['Z'][(u_g > cbins[i])&(u_g < cbins[i+1])]
     K_bin, _ = binning_function(Z_binned,Ki,zmin,zmax,Ns,percentile=16)
     Kz_per_color.append(K_bin)
+# =============================================================================
+Kz_functions = []
+for i,Kc in enumerate(Kz_per_color):
+    ki = interp1d(Kc[:,0],Kc[:,3],kind='linear',fill_value='extrapolate') #K(z) per color interpolations
+    Kz_functions.append(ki)
+     
 K_binned, _ = binning_function(data1['Z'],Kfc,zmin,zmax,Ns,percentile=16)
-Kmedian = K_binned[:,3]
-#
+Kmedian = K_binned[:,3] # median all bins
+Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#interpolation
+ 
+  # =============================================================================
+#   f,ax = plt.subplots(1,1,figsize=(7,6))
+#   ax.scatter(data1['Z'],Kfc,s=4,c='k')
+#   for i in range(len(Kz_per_color)):
+#       ax.plot(Kz_per_color[i][:,0],Kz_per_color[i][:,3],'-')
+#   plt.show()
+#  # 
 # =============================================================================
-# # =============================================================================
-#  f,ax = plt.subplots(1,1,figsize=(7,6))
-#  ax.scatter(data1['Z'],Kfc,s=4,c='k')
-#  for i in range(len(Kz_per_color)):
-#      ax.plot(Kz_per_color[i][:,0],Kz_per_color[i][:,3],'-')
-#  plt.show()
-# # 
-# =============================================================================
-# =============================================================================
-Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')
+color_id = np.zeros_like(u_g,dtype=int)
+for i,color in enumerate(u_g):
+    for j in range(len(cbins)-1):
+        bc = (color > cbins[j]) and (color< cbins[j+1])
+        if bc: idc = j
+    color_id[i] = idc
+Kz_gals = np.zeros_like(u_g,dtype=float)
+for i,idc in enumerate(color_id):
+    Kz_gals[i] = Kz_functions[idc](data1['Z'][i])
 # =============================================================================
 # 
 # f,ax =plt.subplots(1,1,figsize=(7,6))
@@ -102,7 +116,7 @@ dlzrange = cosmo.luminosity_distance(zrange).value
 Mrange = mMmax - 25 - 5*np.log10(dlzrange) - 5*np.log10(h)
 fz = interp1d(zrange,Mrange,kind='cubic',fill_value='extrapolate')
 
-M_new = data1['m_i'] - 25. - 5*np.log10(dL) - 5*np.log10(h) - Kz(data1['Z']) # K-corrected
+M_new = data1['m_i'] - 25. - 5*np.log10(dL) - 5*np.log10(h) - Kz_gals # K-corrected
 ######################## to get  Vmax #######################
 def get_zmax2(M,zend):
     Mend = fz(zend)
@@ -140,7 +154,7 @@ for z in range(Ns-1):
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
     Zmax = get_zmax_v(N,zf)
     V = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
-    Vgals = Omega_rad/3. * (dcomv(data1['Z'])**3. - dcomv(zi)**3)
+    Vgals = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
 # in order to compute the comoving volume surveyed by that bin.
     LF = np.zeros(b-1)
@@ -172,17 +186,18 @@ np.save('/Users/jarmijo/Documents/Mocks/Vmax_8bins_z0.11_z.9_mi23cut.npy',L_Vmax
 np.save('/Users/jarmijo/Documents/Mocks/Vgals_8bins_z0.11_z.9_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
 nf = 2
-nc = 2
+nc = 4
 f,ax = plt.subplots(nf,nc,figsize=(4*nf,4.),sharex=True,
                         sharey=True,gridspec_kw={'width_ratios': [1]*nc, 'height_ratios': [1]*nf})
 for f in range(nf):
     for c in range(nc):
-        zi = zbins[nf*f+c]
-        zf = zbins[nf*f + (c+1)]
-        ax[f,c].hist(L_M[nf*f+c],bins=30,range=(M_max,M_min),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
+        Vr = L_Vgal[nc*f+c]/L_Vmax[nc*f+c]
+        zi = zbins[nc*f+c]
+        zf = zbins[nc*f + (c+1)]
+        ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
         ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
                grid_color='k', grid_alpha=0.5)
-        ax[f,c].legend()
+        ax[f,c].legend(prop={'size':10})
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.0,wspace=0.0)
 plt.show()
@@ -196,7 +211,7 @@ ax.tick_params(direction='inout', length=8, width=2, colors='k',
                grid_color='k', grid_alpha=0.5)
 ax.set_xlabel(r'$M_{i} - 5\log_{10}h$')
 ax.set_ylabel('Counts')
-ax.legend(prop = {'size':12})
+ax.legend(prop = {'size':10},loc=2)
 plt.tight_layout()
 plt.show()
 #==============================================
@@ -214,3 +229,4 @@ ax.set_ylabel('$\log\ [dN/V_{max}$ Mpc$^3$/$h^{-3}$ (0.25 mag)$^{-1}]$')
 plt.tight_layout()
 plt.show()
 # =============================================================================
+lfs = glob('/')

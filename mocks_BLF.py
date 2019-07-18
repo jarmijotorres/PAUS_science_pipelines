@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.cosmology import Planck15 as cosmo
+from astropy.cosmology import WMAP7 as cosmo
 from astroML.stats import binned_statistic_2d
 import matplotlib as mpl
 
@@ -14,7 +14,7 @@ plt.rc('axes',linewidth=1.5)
 plt.rc('font',family='sans-serif')
 plt.rc('font',size=16)
 
-f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nofrf.fits')
+f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_MBlue_SDSSphot_mi23cut.fits')
 data1 = f1[1].data
 dL = cosmo.luminosity_distance(data1['Z'])
 
@@ -64,7 +64,7 @@ for r in range(nf):
         ax[r,c].scatter(xx,(yy),c='b',s=1.,label='%.2lf < z < %.2lf'%(zi,zf),zorder=0)
         ax[r,c].legend(loc=4,prop={'size':12})
         ax[r,c].tick_params(direction='inout', length=8, width=2, colors='k',
-               grid_color='k', grid_alpha=0.5)
+               grid_color='k', grid_alpha=0.5,top=True)
 ax[0,0].set_xticks([-16,-18,-20,-22,-24])
 ax1 = f.add_axes([0.99, 0.11, 0.01, 0.72])
 cmap = mpl.cm.PuBu_r
@@ -74,11 +74,12 @@ cb1 = mpl.colorbar.ColorbarBase(ax1, cmap=cmap,
                                 norm=norm,
                                 orientation='vertical',ticks=[1,2,3,4,5])
 cb1.set_label(r'$\log\ N$')
-ax[0,0].set_ylabel(r'$M_{Blue}$')
-ax[1,1].set_xlabel(r'$M_{i}$',labelpad=-5)
+#plt.text(r'$M_{Blue}$',0.1,0.5)
+#plt.text(r'$M_{i}$',0.5,0.1)
 ax[1,1].xaxis.set_label_coords(1.1,-0.15)
 plt.tight_layout()
-plt.subplots_adjust(wspace=0.00)
+plt.subplots_adjust(wspace=0.00,hspace=0.01)
+plt.savefig('N2D_MB_MI_zbins8_contours.png',bbox_inches='tight')
 plt.show()
 
 # =============================================================================
