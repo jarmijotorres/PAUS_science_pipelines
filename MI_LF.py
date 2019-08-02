@@ -42,15 +42,31 @@ dL = dL.value
 MI_noK = data1['SDSS_i'] - 25. - 5.*np.log10(dL) - 5*np.log10(h) # 5logh units if mock
 Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) - 5*np.log10(h)
 # =============================================================================
-# Colors based in u-g sdss magnitudes
+# Colors based in u-g sdss magnitudes bins with the same number of points
 # =============================================================================
 cl = 0.25
 cu = 1.75
-Nc = 6
+Nc = 8
 cbins = np.linspace(cl,cu,Nc+1,endpoint=True)
 u_g = data1['SDSS_U'] - data1['SDSS_G']
-_,K_color_bins = binning_function(u_g,Kfc,cl,cu,Nc,percentile=16)
+Ncolor,edges_color = np.histogram(u_g,bins=40,range=(0.25,1.75),density=True)
+Ncolor *= np.diff(edges_color)[0]
+cum_col = np.cumsum(Ncolor)
+cb_color = edges_color[:-1] + np.diff(edges_color)[0]/2.
+f_cumcolor = interp1d(cb_color,cum_col,kind='linear',fill_value='extrapolate')
+# new function domain
+color_range = np.arange(cbins[0],cbins[-1],0.00001)
+n_percentiles = np.linspace(0,1,Nc+1) # in octiles
+ec_edges = np.zeros_like(n_percentiles)
+ec_edges[0] = cl
+K_color_bins = []
+for i in range(Nc):
+    R = np.isclose(f_cumcolor(color_range),n_percentiles[i+1],rtol=1e-4)
+    ec_edges[i+1] = np.average(color_range[R])
+    Ki = u_g[(u_g > ec_edges[i])&(u_g < ec_edges[i+1])]
+    K_color_bins.append(Ki)
 #
+    
 Ns = 16
 zmin = 0.11
 zmax = 0.9
@@ -108,15 +124,15 @@ M_max = -23.5
 Mbins= np.linspace(M_max,M_min,b,endpoint=True)
 dM = abs(M_max-M_min)/(b-1)
 #########################################################
-Mmax = np.max(data1['M_I'])# m_i = 23 i-band cut
-zMmax = data1['Z'][np.where(data1['M_I'] == Mmax ) ]
+Mmax = np.max(data1['SDSS_I'])# m_i = 23 i-band cut
+zMmax = data1['Z'][np.where(data1['SDSS_I'] == Mmax ) ]
 mMmax = Mmax + 25 + 5*np.log10(cosmo.luminosity_distance(zMmax).value) + 5*np.log10(h) #should be m_i = 23
 zrange = np.arange(0.01,1.,0.01) # complete range of redshift
 dlzrange = cosmo.luminosity_distance(zrange).value
 Mrange = mMmax - 25 - 5*np.log10(dlzrange) - 5*np.log10(h)
 fz = interp1d(zrange,Mrange,kind='cubic',fill_value='extrapolate')
 
-M_new = data1['m_i'] - 25. - 5*np.log10(dL) - 5*np.log10(h) - Kz_gals # K-corrected
+M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - 5*np.log10(h) - Kz_gals # K-corrected
 ######################## to get  Vmax #######################
 def get_zmax2(M,zend):
     Mend = fz(zend)

@@ -1,0 +1,6 @@
+- add new sample for I-band including z < 0.11 galaxies
+    - read original catalogs again
+- obtain distribution of colors for snapshots and redshift slices in the lightcone
+
+- add 2.5log(1+z) to my definitions of magnitudes
+
