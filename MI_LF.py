@@ -34,7 +34,7 @@ def dcomv(z):
 #     return np.log10(0.4*np.log(10)*ps*(10**(0.4*(Ms-M)))**(alpha+1)*np.exp(-10**(0.4*(Ms-M))))
 # 
 # =============================================================================
-f1 = fits.open('/Users/jarmijo/Documents/Mocks/mocks_MBlue_SDSSphot_mi23cut.fit')
+f1 = fits.open('/home/jarmijo/Documents/mocks/mocks_radecz_SDSSphotometry_SFR_23cut_z0.00_1.2.fits')
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
 dL = cosmo.luminosity_distance(data1['Z'])
@@ -73,7 +73,7 @@ zmax = 0.9
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
 for i,Ki in enumerate(K_color_bins):
-    Z_binned = data1['Z'][(u_g > cbins[i])&(u_g < cbins[i+1])]
+    Z_binned = data1['Z'][(u_g > ec_edges[i])&(u_g < ec_edges[i+1])]
     K_bin, _ = binning_function(Z_binned,Ki,zmin,zmax,Ns,percentile=16)
     Kz_per_color.append(K_bin)
 # =============================================================================
@@ -96,8 +96,8 @@ Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#inte
 # =============================================================================
 color_id = np.zeros_like(u_g,dtype=int)
 for i,color in enumerate(u_g):
-    for j in range(len(cbins)-1):
-        bc = (color > cbins[j]) and (color< cbins[j+1])
+    for j in range(Nc):
+        bc = (color > ec_edges[j]) and (color< ec_edges[j+1])
         if bc: idc = j
     color_id[i] = idc
 Kz_gals = np.zeros_like(u_g,dtype=float)
@@ -115,14 +115,14 @@ for i,idc in enumerate(color_id):
 Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min())
 Omega_rad = Omega_deg * (np.pi/180.)**2.
 Ns = 8
-zmin = 0.11
-zmax = 0.9
+zmin = 0.0
+zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
-b = 31 #N of bins LF
+b = 40 #N of bins LF
 M_min = -16.
 M_max = -23.5
-Mbins= np.linspace(M_max,M_min,b,endpoint=True)
-dM = abs(M_max-M_min)/(b-1)
+Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
+dM = abs(M_max-M_min)/(b)
 #########################################################
 Mmax = np.max(data1['SDSS_I'])# m_i = 23 i-band cut
 zMmax = data1['Z'][np.where(data1['SDSS_I'] == Mmax ) ]
@@ -151,10 +151,6 @@ elapsed_time = time.process_time() - t
 #Zmax = S[:,0]
 #Vmax = S[:,1]
 ##############################################################
-Ns = 9
-zmin = 0.11
-zmax = 0.9
-zbins = np.linspace(zmin,zmax,Ns,endpoint=True)#### redshift bins
 # %load 96
 L_LF = []
 L_bLF = []
@@ -173,8 +169,8 @@ for z in range(Ns-1):
     Vgals = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
 # in order to compute the comoving volume surveyed by that bin.
-    LF = np.zeros(b-1)
-    for i in range(b-1):
+    LF = np.zeros(b)
+    for i in range(b):
         Vi = V[(N > Mbins[i])&(N < Mbins[i+1])]
         LF[i] = np.sum(1./Vi)
     bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
