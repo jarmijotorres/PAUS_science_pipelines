@@ -1,6 +1,6 @@
 import numpy as np
 import h5py,sys
-from astropy.cosmology import Planck15 as cosmo
+from astropy.cosmology import WMAP7 as cosmo
 from astropy.table import Table
 
 icut = sys.argv[1]
