@@ -8,11 +8,12 @@ This is a temporary script file.
 import numpy as np
 #import pandas as pd
 import matplotlib.pyplot as plt
-import time ### for py3
+import time,sys ### for py3
 from astropy.io import fits
 from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
 from scipy.optimize import ridder
+sys.path.append('/home/jarmijo/PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
 h = cosmo.h
@@ -24,11 +25,13 @@ plt.rc('xtick',direction='inout')
 plt.rc('ytick',direction='inout')
 plt.rc('axes',linewidth=1.5)
 plt.rc('font',family='sans-serif')
-plt.rc('font',size=18)
+plt.rc('font',size=12)
 
 
 def dcomv(z):
     return cosmo.comoving_distance(z).value * h #in Mpc/h
+def dLum(z):
+    return cosmo.luminosity_distance(z).value * h #in Mpc/h
 # =============================================================================
 # def Schecter_mag_log(M,ps,Ms,alpha):
 #     return np.log10(0.4*np.log(10)*ps*(10**(0.4*(Ms-M)))**(alpha+1)*np.exp(-10**(0.4*(Ms-M))))
@@ -37,8 +40,7 @@ def dcomv(z):
 f1 = fits.open('/home/jarmijo/Documents/mocks/mocks_radecz_SDSSphotometry_SFR_23cut_z0.00_1.2.fits')
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
-dL = cosmo.luminosity_distance(data1['Z'])
-dL = dL.value
+dL = dLum(data1['Z'])
 MI_noK = data1['SDSS_i'] - 25. - 5.*np.log10(dL) - 5*np.log10(h) # 5logh units if mock
 Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) - 5*np.log10(h)
 # =============================================================================
@@ -51,6 +53,7 @@ cbins = np.linspace(cl,cu,Nc+1,endpoint=True)
 u_g = data1['SDSS_U'] - data1['SDSS_G']
 Ncolor,edges_color = np.histogram(u_g,bins=40,range=(0.25,1.75),density=True)
 Ncolor *= np.diff(edges_color)[0]
+# cumulative distribution
 cum_col = np.cumsum(Ncolor)
 cb_color = edges_color[:-1] + np.diff(edges_color)[0]/2.
 f_cumcolor = interp1d(cb_color,cum_col,kind='linear',fill_value='extrapolate')
@@ -63,13 +66,13 @@ K_color_bins = []
 for i in range(Nc):
     R = np.isclose(f_cumcolor(color_range),n_percentiles[i+1],rtol=1e-4)
     ec_edges[i+1] = np.average(color_range[R])
-    Ki = u_g[(u_g > ec_edges[i])&(u_g < ec_edges[i+1])]
+    Ki = Kfc[(u_g > ec_edges[i])&(u_g < ec_edges[i+1])]
     K_color_bins.append(Ki)
 #
-    
-Ns = 16
-zmin = 0.11
-zmax = 0.9
+# give to each K(z) function 20 points.
+Ns = 32
+zmin = 0.0 # range valid only for I-band magnitude
+zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
 for i,Ki in enumerate(K_color_bins):
@@ -94,6 +97,8 @@ Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#inte
 #   plt.show()
 #  # 
 # =============================================================================
+#generate the function id and the respective K-correction to each galaxy using the functions above
+# ultra slow.
 color_id = np.zeros_like(u_g,dtype=int)
 for i,color in enumerate(u_g):
     for j in range(Nc):
@@ -114,57 +119,42 @@ for i,idc in enumerate(color_id):
  # %load 92 107
 Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min())
 Omega_rad = Omega_deg * (np.pi/180.)**2.
-Ns = 8
-zmin = 0.0
-zmax = 1.2
-zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 b = 40 #N of bins LF
 M_min = -16.
-M_max = -23.5
+M_max = -23.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b)
 #########################################################
-Mmax = np.max(data1['SDSS_I'])# m_i = 23 i-band cut
-zMmax = data1['Z'][np.where(data1['SDSS_I'] == Mmax ) ]
-mMmax = Mmax + 25 + 5*np.log10(cosmo.luminosity_distance(zMmax).value) + 5*np.log10(h) #should be m_i = 23
-zrange = np.arange(0.01,1.,0.01) # complete range of redshift
-dlzrange = cosmo.luminosity_distance(zrange).value
-Mrange = mMmax - 25 - 5*np.log10(dlzrange) - 5*np.log10(h)
-fz = interp1d(zrange,Mrange,kind='cubic',fill_value='extrapolate')
-
-M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - 5*np.log10(h) - Kz_gals # K-corrected
+M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals # New I-band absolute magnitude 
 ######################## to get  Vmax #######################
-def get_zmax2(M,zend):
-    Mend = fz(zend)
-    if M < Mend:
-        r1 = zend
-    if M > Mend:
-        interp_fn2 = lambda x: fz(x) - M
-        r1 = ridder(interp_fn2,-0.1,zend)
-    return r1
-########################################################
-t = time.process_time()
+micut=23
+def get_zmax2(Ms,Ks,zini,zend):
+    zrange = np.linspace(zini,zend,1000)
+    Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks
+    Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
+    Mend = Mz(zend)
+    if Ms < Mend:
+        return zend
+    else:
+        interp_fn2 = lambda x: Mz(x) - Ms
+        return ridder(interp_fn2,-0.1,zend)
 get_zmax_v = np.vectorize(get_zmax2)
-#Zmax = get_zmax_v(M_new)
-elapsed_time = time.process_time() - t
-#S = np.load('/Users/jarmijo/Documents/Mocks/mocks_zmax_Vmax.npy')
-#Zmax = S[:,0]
-#Vmax = S[:,1]
 ##############################################################
-# %load 96
+Nz = 12 # Number of redshift slices to compute the luminosity function
+zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
-L_bLF = []
 L_M = []
-L_B = []
+#L_B = [] # this is the blue magnitude
 L_Vmax = []
 L_Vgal = []
-for z in range(Ns-1):
+for z in range(Nz):
     zi = zbins[z]
     zf = zbins[z+1]
     N = M_new[(data1['Z']>zi)&(data1['Z']<zf)]
-    B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)]
+    K = Kz_gals[(data1['Z']>zi)&(data1['Z']<zf)]
+    #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
-    Zmax = get_zmax_v(N,zf)
+    Zmax = get_zmax_v(N,K,zi,zf)
     V = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
     Vgals = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
@@ -175,23 +165,21 @@ for z in range(Ns-1):
         LF[i] = np.sum(1./Vi)
     bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
     L_LF.append(LF)
-    L_bLF.append(bb)
     L_M.append(N)
     L_Vmax.append(V)
     L_Vgal.append(Vgals)
-    L_B.append(B)
+    #L_B.append(B)
 #
 L_LF = np.array(L_LF)
-L_bLF = np.array(L_bLF)
 L_M = np.array(L_M)
-L_B = np.array(L_B)
+#L_B = np.array(L_B)
 L_Vmax = np.array(L_Vmax)
 L_Vgal = np.array(L_Vgal)
 np.save('/Users/jarmijo/Documents/Mocks/LF_8bins_z0.11_z.9_mi23cut.npy',L_LF)
 
 np.save('/Users/jarmijo/Documents/Mocks/Mi_8bins_z0.11_z.9_mi23cut.npy',L_M,allow_pickle=True)
 
-np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
+#np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
 
 np.save('/Users/jarmijo/Documents/Mocks/Vmax_8bins_z0.11_z.9_mi23cut.npy',L_Vmax,allow_pickle=True)
 
