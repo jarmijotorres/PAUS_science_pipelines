@@ -41,8 +41,7 @@ f1 = fits.open('/home/jarmijo/Documents/mocks/mocks_radecz_SDSSphotometry_SFR_23
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
 dL = dLum(data1['Z'])
-MI_noK = data1['SDSS_i'] - 25. - 5.*np.log10(dL) - 5*np.log10(h) # 5logh units if mock
-Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) - 5*np.log10(h)
+Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL)
 # =============================================================================
 # Colors based in u-g sdss magnitudes bins with the same number of points
 # =============================================================================
@@ -52,7 +51,7 @@ Nc = 8
 cbins = np.linspace(cl,cu,Nc+1,endpoint=True)
 u_g = data1['SDSS_U'] - data1['SDSS_G']
 Ncolor,edges_color = np.histogram(u_g,bins=40,range=(0.25,1.75),density=True)
-Ncolor *= np.diff(edges_color)[0]
+Ncolor *= np.diff(edges_color)[0] # in this way the distribution sums 1
 # cumulative distribution
 cum_col = np.cumsum(Ncolor)
 cb_color = edges_color[:-1] + np.diff(edges_color)[0]/2.
@@ -71,7 +70,7 @@ for i in range(Nc):
 #
 # give to each K(z) function 20 points.
 Ns = 32
-zmin = 0.0 # range valid only for I-band magnitude
+zmin = 0.001 # range valid only for I-band magnitude
 zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
@@ -125,15 +124,15 @@ M_max = -23.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b)
 #########################################################
-M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals # New I-band absolute magnitude 
+M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals + 2.5*np.log10(1+data1['Z']) # New I-band absolute magnitude 
 ######################## to get  Vmax #######################
 micut=23
 def get_zmax2(Ms,Ks,zini,zend):
-    zrange = np.linspace(zini,zend,1000)
-    Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks
+    zrange = np.linspace(zini,zend,100)
+    Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks + 2.5*np.log10(1+zrange)
     Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
     Mend = Mz(zend)
-    if Ms < Mend:
+    if Ms <= Mend:
         return zend
     else:
         interp_fn2 = lambda x: Mz(x) - Ms
@@ -155,19 +154,19 @@ for z in range(Nz):
     #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
     Zmax = get_zmax_v(N,K,zi,zf)
-    V = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
-    Vgals = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
+    Vmax = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
+    Vgal = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
 # in order to compute the comoving volume surveyed by that bin.
     LF = np.zeros(b)
     for i in range(b):
-        Vi = V[(N > Mbins[i])&(N < Mbins[i+1])]
+        Vi = Vmax[(N > Mbins[i])&(N < Mbins[i+1])]
         LF[i] = np.sum(1./Vi)
     bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
     L_LF.append(LF)
     L_M.append(N)
-    L_Vmax.append(V)
-    L_Vgal.append(Vgals)
+    L_Vmax.append(Vmax)
+    L_Vgal.append(Vgal)
     #L_B.append(B)
 #
 L_LF = np.array(L_LF)
