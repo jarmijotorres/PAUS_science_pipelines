@@ -12,7 +12,7 @@ import time,sys ### for py3
 from astropy.io import fits
 from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
-from scipy.optimize import ridder
+from scipy.optimize import ridder,newton,bisect,brentq
 sys.path.append('/home/jarmijo/PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
@@ -32,6 +32,10 @@ def dcomv(z):
     return cosmo.comoving_distance(z).value * h #in Mpc/h
 def dLum(z):
     return cosmo.luminosity_distance(z).value * h #in Mpc/h
+def DM(z):
+    return 5*np.log10((dLum(z)))
+def kz(z):
+    return 2.5*np.log10(1+z)
 # =============================================================================
 # def Schecter_mag_log(M,ps,Ms,alpha):
 #     return np.log10(0.4*np.log(10)*ps*(10**(0.4*(Ms-M)))**(alpha+1)*np.exp(-10**(0.4*(Ms-M))))
@@ -120,25 +124,41 @@ Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data
 Omega_rad = Omega_deg * (np.pi/180.)**2.
 b = 40 #N of bins LF
 M_min = -16.
-M_max = -23.
+M_max = -24.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b)
 #########################################################
 M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals + 2.5*np.log10(1+data1['Z']) # New I-band absolute magnitude 
 ######################## to get  Vmax #######################
 micut=23
-def get_zmax2(Ms,Ks,zini,zend):
-    zrange = np.linspace(zini,zend,100)
-    Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks + 2.5*np.log10(1+zrange)
-    Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
-    Mend = Mz(zend)
-    if Ms <= Mend:
+def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
+    X0 = micut - Ms - 25.
+    fz = lambda x: DM(x) + Kz_functions[color_id](x) - X0
+    #fz = lambda x: DM(x) - X0
+#    root = ridder(fz,-0.001,zend)# Choose wisely
+    root = newton(fz,(zini+zend)*0.5)
+    if root > zend:
         return zend
+#    elif root <= zini:
+#        return Zs 
     else:
-        interp_fn2 = lambda x: Mz(x) - Ms
-        return ridder(interp_fn2,-0.1,zend)
-get_zmax_v = np.vectorize(get_zmax2)
-##############################################################
+        return root
+#
+# =============================================================================
+# def get_zmax2(Ms,Ks,zini,zend):#OLD function
+#     zrange = np.linspace(zini,zend,100)
+#     Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks + 2.5*np.log10(1+zrange)
+#     Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
+#     Mend = Mz(zend)
+#     if Ms <= Mend:
+#         return zend
+#     else:
+#         interp_fn2 = lambda x: Mz(x) - Ms
+#         return ridder(interp_fn2,-0.1,zend)
+# 
+# ##############################################################
+# =============================================================================
+get_zmax_v = np.vectorize(get_zmax)
 Nz = 12 # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
@@ -151,9 +171,10 @@ for z in range(Nz):
     zf = zbins[z+1]
     N = M_new[(data1['Z']>zi)&(data1['Z']<zf)]
     K = Kz_gals[(data1['Z']>zi)&(data1['Z']<zf)]
+    C = color_id[(data1['Z']>zi)&(data1['Z']<zf)]
     #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
-    Zmax = get_zmax_v(N,K,zi,zf)
+    Zmax = get_zmax_v(N,C,Z,zi,zf)
     Vmax = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
     Vgal = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
@@ -184,7 +205,7 @@ np.save('/Users/jarmijo/Documents/Mocks/Vmax_8bins_z0.11_z.9_mi23cut.npy',L_Vmax
 
 np.save('/Users/jarmijo/Documents/Mocks/Vgals_8bins_z0.11_z.9_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
-nf = 2
+nf = 3
 nc = 4
 f,ax = plt.subplots(nf,nc,figsize=(4*nf,4.),sharex=True,
                         sharey=True,gridspec_kw={'width_ratios': [1]*nc, 'height_ratios': [1]*nf})
@@ -200,6 +221,32 @@ for f in range(nf):
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.0,wspace=0.0)
 plt.show()
+
+# =============================================================================
+nf = 3
+nc = 4
+f,ax = plt.subplots(nf,nc,figsize=(4*nf,4.),sharex=True,
+                        sharey=True,gridspec_kw={'width_ratios': [1]*nc, 'height_ratios': [1]*nf})
+for f in range(nf):
+    for c in range(nc):
+        Vr = L_Vgal[nc*f+c]/L_Vmax[nc*f+c]
+        zi = zbins[nc*f+c]
+        zf = zbins[nc*f + (c+1)]
+        NVr,_ = np.histogram(Vr,bins=20,range=(0,1))
+        N_bar = np.mean(NVr)
+        bc_Vr = _[:-1] + np.diff(_)[0]/2.
+        ax[f,c].step(bc_Vr,NVr/N_bar,where='post',color='b',linestyle='-',label='%.2lf < z < %.2lf'%(zi,zf))
+        ax[f,c].hlines(1.0,0.,1.,linestyle='--',color='k',linewidth=1.5)
+        #ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
+        ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
+               grid_color='k', grid_alpha=0.5)
+        ax[f,c].legend(prop={'size':10})
+
+ax[0,0].set_xlim(0,1)
+plt.tight_layout()
+plt.subplots_adjust(hspace=0.0,wspace=0.0)
+plt.show()
+# =============================================================================
 ############################
 f,ax = plt.subplots(1,1,figsize=(7,6))
 for c in range(len(L_M)):
@@ -218,7 +265,7 @@ f,ax = plt.subplots(1,1,figsize=(7,6))
 for c in range(len(L_LF)):
     zi = zbins[c]
     zf = zbins[c+1]
-    ax.plot(L_bLF[c],np.log10(L_LF[c]),'o-',ms=5.,label = "%.2f < z < %.2f"%(zi,zf))
+    ax.plot(bb,np.log10(L_LF[c]),'o-',ms=5.,label = "%.2f < z < %.2f"%(zi,zf))
 ax.legend(prop={'size':12})
 # =============================================================================
 ax.legend(prop = {'size':12})
