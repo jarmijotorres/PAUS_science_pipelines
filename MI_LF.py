@@ -12,13 +12,11 @@ import time,sys ### for py3
 from astropy.io import fits
 from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
-from scipy.optimize import ridder,newton,bisect,brentq
-sys.path.append('/home/jarmijo/PAUS_science_pipelines/')
+from scipy.optimize import newton#,ridder,bisect,brentq
+sys.path.append('/home/jarmijo/dev_PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
-h = cosmo.h
-
-
+# Matplotlib.pyplot parameters
 plt.rc('xtick',labelsize=16)
 plt.rc('ytick',labelsize=16)
 plt.rc('xtick',direction='inout')
@@ -27,7 +25,8 @@ plt.rc('axes',linewidth=1.5)
 plt.rc('font',family='sans-serif')
 plt.rc('font',size=12)
 
-
+# useful mathematicals definitions
+h = cosmo.h
 def dcomv(z):
     return cosmo.comoving_distance(z).value * h #in Mpc/h
 def dLum(z):
@@ -41,11 +40,12 @@ def kz(z):
 #     return np.log10(0.4*np.log(10)*ps*(10**(0.4*(Ms-M)))**(alpha+1)*np.exp(-10**(0.4*(Ms-M))))
 # 
 # =============================================================================
+# read data and define the K - correction
 f1 = fits.open('/home/jarmijo/Documents/mocks/mocks_radecz_SDSSphotometry_SFR_23cut_z0.00_1.2.fits')
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
 dL = dLum(data1['Z'])
-Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL)
+Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) # aparent_magnitude -  absolute_magnitude
 # =============================================================================
 # Colors based in u-g sdss magnitudes bins with the same number of points
 # =============================================================================
@@ -59,7 +59,7 @@ Ncolor *= np.diff(edges_color)[0] # in this way the distribution sums 1
 # cumulative distribution
 cum_col = np.cumsum(Ncolor)
 cb_color = edges_color[:-1] + np.diff(edges_color)[0]/2.
-f_cumcolor = interp1d(cb_color,cum_col,kind='linear',fill_value='extrapolate')
+f_cumcolor = interp1d(cb_color,cum_col,kind='linear',fill_value='extrapolate') 
 # new function domain
 color_range = np.arange(cbins[0],cbins[-1],0.00001)
 n_percentiles = np.linspace(0,1,Nc+1) # in octiles
@@ -73,7 +73,7 @@ for i in range(Nc):
     K_color_bins.append(Ki)
 #
 # give to each K(z) function 20 points.
-Ns = 32
+Ns = 12
 zmin = 0.001 # range valid only for I-band magnitude
 zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
@@ -111,24 +111,18 @@ for i,color in enumerate(u_g):
 Kz_gals = np.zeros_like(u_g,dtype=float)
 for i,idc in enumerate(color_id):
     Kz_gals[i] = Kz_functions[idc](data1['Z'][i])
+# Apply this K-correction to all abosultes magnitudes now on
 # =============================================================================
-# 
-# f,ax =plt.subplots(1,1,figsize=(7,6))
-# ax.scatter(data1['Z'],MI_noK - data1['M_I'],s=5,c='b')
-# plt.show()
-# 
-# =============================================================================
-
- # %load 92 107
-Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min())
-Omega_rad = Omega_deg * (np.pi/180.)**2.
-b = 40 #N of bins LF
+# Absolute maginute I-band Luminosity function
+Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min()) # cos(alpha) where alpha is an angle (?) 
+Omega_rad = Omega_deg * (np.pi/180.)**2. # to sq. rad
+b = 32 #N of bins LF
 M_min = -16.
 M_max = -24.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
-dM = abs(M_max-M_min)/(b)
+dM = abs(M_max-M_min)/(b) # Nb = 32 between (-16,-24) --> dM = 0.25 (Nb = 40 --> dM = 0.2 for the same range)
 #########################################################
-M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals + 2.5*np.log10(1+data1['Z']) # New I-band absolute magnitude 
+M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals #+ 2.5*np.log10(1+data1['Z']) # New I-band absolute magnitude 
 ######################## to get  Vmax #######################
 micut=23
 def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
@@ -145,7 +139,7 @@ def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
         return root
 #
 # =============================================================================
-# def get_zmax2(Ms,Ks,zini,zend):#OLD function
+# def get_zmax2(Ms,Ks,zini,zend):#OLD functiongg
 #     zrange = np.linspace(zini,zend,100)
 #     Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks + 2.5*np.log10(1+zrange)
 #     Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
@@ -166,6 +160,7 @@ L_M = []
 #L_B = [] # this is the blue magnitude
 L_Vmax = []
 L_Vgal = []
+t = time.process_time()
 for z in range(Nz):
     zi = zbins[z]
     zf = zbins[z+1]
@@ -189,6 +184,7 @@ for z in range(Nz):
     L_Vmax.append(Vmax)
     L_Vgal.append(Vgal)
     #L_B.append(B)
+e_t = time.process_time() - t
 #
 L_LF = np.array(L_LF)
 L_M = np.array(L_M)
