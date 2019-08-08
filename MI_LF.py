@@ -23,7 +23,7 @@ plt.rc('xtick',direction='inout')
 plt.rc('ytick',direction='inout')
 plt.rc('axes',linewidth=1.5)
 plt.rc('font',family='sans-serif')
-plt.rc('font',size=12)
+plt.rc('font',size=16)
 
 # useful mathematicals definitions
 h = cosmo.h
@@ -138,20 +138,6 @@ def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
     else:
         return root
 #
-# =============================================================================
-# def get_zmax2(Ms,Ks,zini,zend):#OLD functiongg
-#     zrange = np.linspace(zini,zend,100)
-#     Mcut = micut - 25. - 5*np.log10(dLum(zrange)) - Ks + 2.5*np.log10(1+zrange)
-#     Mz = interp1d(zrange,Mcut,kind='cubic',fill_value='extrapolate')
-#     Mend = Mz(zend)
-#     if Ms <= Mend:
-#         return zend
-#     else:
-#         interp_fn2 = lambda x: Mz(x) - Ms
-#         return ridder(interp_fn2,-0.1,zend)
-# 
-# ##############################################################
-# =============================================================================
 get_zmax_v = np.vectorize(get_zmax)
 Nz = 12 # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
@@ -169,7 +155,7 @@ for z in range(Nz):
     C = color_id[(data1['Z']>zi)&(data1['Z']<zf)]
     #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
-    Zmax = get_zmax_v(N,C,Z,zi,zf)
+    Zmax = get_zmax_v(N,K,C,Z,zi,zf)
     Vmax = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
     Vgal = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
@@ -191,15 +177,15 @@ L_M = np.array(L_M)
 #L_B = np.array(L_B)
 L_Vmax = np.array(L_Vmax)
 L_Vgal = np.array(L_Vgal)
-np.save('/Users/jarmijo/Documents/Mocks/LF_8bins_z0.11_z.9_mi23cut.npy',L_LF)
+np.save('/home/jarmijo/Documents/mocks/LF_Mi_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_LF)
 
-np.save('/Users/jarmijo/Documents/Mocks/Mi_8bins_z0.11_z.9_mi23cut.npy',L_M,allow_pickle=True)
+np.save('/home/jarmijo/Documents/mocks/LMi_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_M,allow_pickle=True)
 
 #np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
 
-np.save('/Users/jarmijo/Documents/Mocks/Vmax_8bins_z0.11_z.9_mi23cut.npy',L_Vmax,allow_pickle=True)
+np.save('LVmax_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
 
-np.save('/Users/jarmijo/Documents/Mocks/Vgals_8bins_z0.11_z.9_mi23cut.npy',L_Vgal,allow_pickle=True)
+np.save('LVgal_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
 nf = 3
 nc = 4
@@ -236,7 +222,7 @@ for f in range(nf):
         #ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
         ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
                grid_color='k', grid_alpha=0.5)
-        ax[f,c].legend(prop={'size':10})
+ax[f,c].legend(prop={'size':10})
 
 ax[0,0].set_xlim(0,1)
 plt.tight_layout()
@@ -261,14 +247,19 @@ f,ax = plt.subplots(1,1,figsize=(7,6))
 for c in range(len(L_LF)):
     zi = zbins[c]
     zf = zbins[c+1]
-    ax.plot(bb,np.log10(L_LF[c]),'o-',ms=5.,label = "%.2f < z < %.2f"%(zi,zf))
+    ax.plot(bb,np.log10(L_LF[c]),'o-',c=np.random.random(3),ms=5.,label = "%.2f < z < %.2f"%(zi,zf))
 ax.legend(prop={'size':12})
 # =============================================================================
+ax.set_xticks(np.arange(-24,-15,1))
+ax.set_xlim(-24,-16)
+ax.set_yticks(np.arange(-7,-1,1))
+ax.set_ylim(-6.9,-1.8)
 ax.legend(prop = {'size':12})
 ax.set_xlabel('$M_{i} - 5\log_{10}h$')
 ax.set_ylabel('$\log\ [dN/V_{max}$ Mpc$^3$/$h^{-3}$ (0.25 mag)$^{-1}]$')
 #plt.savefig('./Dropbox/PhD/Durham/Projects/PAU/figures/July/Mblue_LF_mocks_mi23cut_8zbins_maxcut_2.png',bbox_inches='tight')
 plt.tight_layout()
 plt.show()
+
 # =============================================================================
 lfs = glob('/')
