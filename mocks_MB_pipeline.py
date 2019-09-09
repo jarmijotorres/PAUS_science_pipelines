@@ -11,21 +11,22 @@ from astropy.cosmology import Planck15 as cosmo
 from astropy.table import Table
 
 icut = sys.argv[1]
-lcCoreFilename = "/cosma5/data/durham/jarmijo/mocks_Durham/Gonzalez13.PAU.MillGas.field1.core.0.hdf5"
-lcPhotometryFilename = "/cosma5/data/durham/jarmijo/mocks_Durham/Gonzalez13.PAU.MillGas.field1.photometry.0.hdf5"
-lcEmlinesFilename = "/cosma5/data/durham/jarmijo/mocks_Durham/Gonzalez13.PAU.MillGas.field1.emlines.0.hdf5"
+localdir = '/home/jarmijo/Documents/mocks/'
+lcCoreFilename = localdir+"Gonzalez13.PAU.MillGas.field1.core.0.hdf5"
+lcPhotometryFilename = localdir+"Gonzalez13.PAU.MillGas.field1.photometry.0.hdf5"
+#lcEmlinesFilename = localdir+"Gonzalez13.PAU.MillGas.field1.emlines.0.hdf5"
 coreFile = h5py.File(lcCoreFilename, "r")
 photometryFile = h5py.File(lcPhotometryFilename, "r")
-emlinesFile = h5py.File(lcEmlinesFilename, "r")
+#emlinesFile = h5py.File(lcEmlinesFilename, "r")
 
 z_obs =  np.array(coreFile.get("Data/" + "z_obs"))
 ra = np.array(coreFile.get("Data/" + "ra"))
 dec = np.array(coreFile.get("Data/" + "dec"))
-LHalpha = np.array(emlinesFile.get("Data/" + "L_tot_Halpha_ext"))
+#LHalpha = np.array(emlinesFile.get("Data/" + "L_tot_Halpha_ext"))
 mstardot = np.array(coreFile.get("Data/" + 'mstardot'))
-magI = np.array(photometryFile.get("Data/" + "appiSo_tot_ext"))
-MagI = np.array(photometryFile.get("Data/" + "magiSr_tot_ext"))
-table = np.array([ra,dec,z_obs,magI,MagI,LHalpha,mstardot])
+magI = np.array(coreFile.get("Data/" + "appMio_tot_ext"))#
+MagI = np.array(coreFile.get("Data/" + "magMir_tot_ext"))
+table = np.array([ra,dec,z_obs,magI,MagI,mstardot])
 nb = 40
 print ("reading mocks magnitudes... \n")
 for i in range(nb):

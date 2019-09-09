@@ -73,8 +73,8 @@ for i in range(Nc):
     K_color_bins.append(Ki)
 #
 # give to each K(z) function 20 points.
-Ns = 12
-zmin = 0.001 # range valid only for I-band magnitude
+Ns = 10
+zmin = 0.13 #range valid only for I-band magnitude
 zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
@@ -139,13 +139,14 @@ def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
         return root
 #
 get_zmax_v = np.vectorize(get_zmax)
-Nz = 12 # Number of redshift slices to compute the luminosity function
+Nz = Ns # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
 L_M = []
 #L_B = [] # this is the blue magnitude
 L_Vmax = []
 L_Vgal = []
+Vi_Mbin = []
 t = time.process_time()
 for z in range(Nz):
     zi = zbins[z]
@@ -163,6 +164,7 @@ for z in range(Nz):
     LF = np.zeros(b)
     for i in range(b):
         Vi = Vmax[(N > Mbins[i])&(N < Mbins[i+1])]
+        Vi_Mbin.append(Vi)
         LF[i] = np.sum(1./Vi)
     bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
     L_LF.append(LF)
@@ -183,9 +185,9 @@ np.save('/home/jarmijo/Documents/mocks/LMi_32Mbins_12zbins_z0.00_1.2_8cbins_mi23
 
 #np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
 
-np.save('LVmax_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
+np.save('/home/jarmijo/Documents/mocks/LVmax_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
 
-np.save('LVgal_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
+np.save('/home/jarmijo/Documents/mocks/LVgal_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
 nf = 3
 nc = 4
