@@ -41,11 +41,12 @@ def kz(z):
 # 
 # =============================================================================
 # read data and define the K - correction
-f1 = fits.open('/home/jarmijo/Documents/mocks/mocks_radecz_SDSSphotometry_SFR_23cut_z0.00_1.2.fits')
+f1 = fits.open('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_MB_SFR_23cut.fits')
 #f1 = fits.open('/Users/Joaquin/Documents/Catalogs/mocks/mocks_radecz_MIMB_SFRHaplha_23cut_fix_nfrf.fits')
 data1 = f1[1].data
 dL = dLum(data1['Z'])
-Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) # aparent_magnitude -  absolute_magnitude
+#Kfc = data1['SDSS_i'] - data1['SDSS_I'] -25. - 5*np.log10(dL) # aparent_magnitude -  absolute_magnitude
+Kfc = data1['CFHTLS_i'] - data1['CFHTLS_I'] - 25. - 5*np.log10(dL)#CFHTLS photometry
 # =============================================================================
 # Colors based in u-g sdss magnitudes bins with the same number of points
 # =============================================================================
@@ -73,8 +74,8 @@ for i in range(Nc):
     K_color_bins.append(Ki)
 #
 # give to each K(z) function 20 points.
-Ns = 10
-zmin = 0.13 #range valid only for I-band magnitude
+Ns = 20
+zmin = 0.001 #range valid only for I-band magnitude
 zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
@@ -91,7 +92,6 @@ for i,Kc in enumerate(Kz_per_color):
 K_binned, _ = binning_function(data1['Z'],Kfc,zmin,zmax,Ns,percentile=16)
 Kmedian = K_binned[:,3] # median all bins
 Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#interpolation
- 
   # =============================================================================
 #   f,ax = plt.subplots(1,1,figsize=(7,6))
 #   ax.scatter(data1['Z'],Kfc,s=4,c='k')
@@ -112,6 +112,15 @@ Kz_gals = np.zeros_like(u_g,dtype=float)
 for i,idc in enumerate(color_id):
     Kz_gals[i] = Kz_functions[idc](data1['Z'][i])
 # Apply this K-correction to all abosultes magnitudes now on
+#========== save new table with Kz corrections per each galaxy =============#
+Kz_fits = fits.Column(name='Kz_gal',format='D',array=Kz_gals)
+orig_cols = data1.columns
+new_col = fits.ColDefs((Kz_fits,))
+hdu = fits.BinTableHDU.from_columns(orig_cols + new_col)
+hdu.writeto('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
+#=============== load from her if the K-correction was created already ====#
+f2 = fits.open('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
+data1 = f2[1].data
 # =============================================================================
 # Absolute maginute I-band Luminosity function
 Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min()) # cos(alpha) where alpha is an angle (?) 
@@ -122,7 +131,7 @@ M_max = -24.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b) # Nb = 32 between (-16,-24) --> dM = 0.25 (Nb = 40 --> dM = 0.2 for the same range)
 #########################################################
-M_new = data1['SDSS_i'] - 25. - 5*np.log10(dL) - Kz_gals #+ 2.5*np.log10(1+data1['Z']) # New I-band absolute magnitude 
+M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log10(1+data1['Z']) # New I-band 
 ######################## to get  Vmax #######################
 micut=23
 def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
@@ -139,7 +148,7 @@ def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
         return root
 #
 get_zmax_v = np.vectorize(get_zmax)
-Nz = Ns # Number of redshift slices to compute the luminosity function
+Nz = 12 # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
 L_M = []
