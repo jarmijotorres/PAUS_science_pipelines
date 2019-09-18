@@ -173,8 +173,12 @@ for z in range(Nz):
     LF = np.zeros(b)
     for i in range(b):
         Vi = Vmax[(N > Mbins[i])&(N < Mbins[i+1])]
+        M_in_bin = N[(N > Mbins[i])&(N < Mbins[i+1])]
         Vi_Mbin.append(Vi)
         LF[i] = np.sum(1./Vi)
+        if len(M_in_bin) > 0:
+            if ~np.isclose(M_in_bin.max(),Mbins[i+1],rtol=1e-3):
+                LF[i] = 0.0
     bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
     L_LF.append(LF)
     L_M.append(N)
@@ -254,6 +258,7 @@ ax.legend(prop = {'size':10},loc=2)
 plt.tight_layout()
 plt.show()
 #==============================================
+
 f,ax = plt.subplots(1,1,figsize=(7,6))
 for c in range(len(L_LF)):
     zi = zbins[c]
@@ -264,7 +269,7 @@ ax.legend(prop={'size':12})
 ax.set_xticks(np.arange(-24,-15,1))
 ax.set_xlim(-24,-16)
 ax.set_yticks(np.arange(-7,-1,1))
-ax.set_ylim(-6.9,-1.8)
+ax.set_ylim(-6.,-1.8)
 ax.legend(prop = {'size':12})
 ax.set_xlabel('$M_{i} - 5\log_{10}h$')
 ax.set_ylabel('$\log\ [dN/V_{max}$ Mpc$^3$/$h^{-3}$ (0.25 mag)$^{-1}]$')
