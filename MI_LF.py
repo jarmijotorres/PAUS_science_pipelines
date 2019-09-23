@@ -16,15 +16,6 @@ from scipy.optimize import newton#,ridder,bisect,brentq
 sys.path.append('/home/jarmijo/dev_PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
-# Matplotlib.pyplot parameters
-plt.rc('xtick',labelsize=16)
-plt.rc('ytick',labelsize=16)
-plt.rc('xtick',direction='inout')
-plt.rc('ytick',direction='inout')
-plt.rc('axes',linewidth=1.5)
-plt.rc('font',family='sans-serif')
-plt.rc('font',size=16)
-
 # useful mathematicals definitions
 h = cosmo.h
 def dcomv(z):
@@ -93,15 +84,6 @@ K_binned, _ = binning_function(data1['Z'],Kfc,zmin,zmax,Ns,percentile=16)
 Kmedian = K_binned[:,3] # median all bins
 Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#interpolation
   # =============================================================================
-#   f,ax = plt.subplots(1,1,figsize=(7,6))
-#   ax.scatter(data1['Z'],Kfc,s=4,c='k')
-#   for i in range(len(Kz_per_color)):
-#       ax.plot(Kz_per_color[i][:,0],Kz_per_color[i][:,3],'-')
-#   plt.show()
-#  # 
-# =============================================================================
-#generate the function id and the respective K-correction to each galaxy using the functions above
-# ultra slow.
 color_id = np.zeros_like(u_g,dtype=int)
 for i,color in enumerate(u_g):
     for j in range(Nc):
@@ -113,11 +95,11 @@ for i,idc in enumerate(color_id):
     Kz_gals[i] = Kz_functions[idc](data1['Z'][i])
 # Apply this K-correction to all abosultes magnitudes now on
 #========== save new table with Kz corrections per each galaxy =============#
-Kz_fits = fits.Column(name='Kz_gal',format='D',array=Kz_gals)
-orig_cols = data1.columns
-new_col = fits.ColDefs((Kz_fits,))
-hdu = fits.BinTableHDU.from_columns(orig_cols + new_col)
-hdu.writeto('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
+#Kz_fits = fits.Column(name='Kz_gal',format='D',array=Kz_gals)
+#orig_cols = data1.columns
+#new_col = fits.ColDefs((Kz_fits,))
+#hdu = fits.BinTableHDU.from_columns(orig_cols + new_col)
+#hdu.writeto('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
 #=============== load from her if the K-correction was created already ====#
 f2 = fits.open('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
 data1 = f2[1].data
@@ -132,6 +114,7 @@ Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b) # Nb = 32 between (-16,-24) --> dM = 0.25 (Nb = 40 --> dM = 0.2 for the same range)
 #########################################################
 M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log10(1+data1['Z']) # New I-band 
+bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
 ######################## to get  Vmax #######################
 micut=23
 def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
@@ -139,7 +122,7 @@ def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
     fz = lambda x: DM(x) + Kz_functions[color_id](x) - X0
     #fz = lambda x: DM(x) - X0
 #    root = ridder(fz,-0.001,zend)# Choose wisely
-    root = newton(fz,(zini+zend)*0.5)
+    root = newton(fz,(zini+zend)*0.5,maxiter=int(1e3))
     if root > zend:
         return zend
 #    elif root <= zini:
@@ -179,7 +162,6 @@ for z in range(Nz):
         if len(M_in_bin) > 0:
             if ~np.isclose(M_in_bin.max(),Mbins[i+1],rtol=1e-3):
                 LF[i] = 0.0
-    bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
     L_LF.append(LF)
     L_M.append(N)
     L_Vmax.append(Vmax)
@@ -192,90 +174,13 @@ L_M = np.array(L_M)
 #L_B = np.array(L_B)
 L_Vmax = np.array(L_Vmax)
 L_Vgal = np.array(L_Vgal)
-np.save('/home/jarmijo/Documents/mocks/LF_Mi_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_LF)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LLF_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_LF)
 
-np.save('/home/jarmijo/Documents/mocks/LMi_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_M,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LMi_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_M,allow_pickle=True)
 
 #np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
 
-np.save('/home/jarmijo/Documents/mocks/LVmax_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVmax_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
 
-np.save('/home/jarmijo/Documents/mocks/LVgal_32Mbins_12zbins_z0.00_1.2_8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVgal_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
-nf = 3
-nc = 4
-f,ax = plt.subplots(nf,nc,figsize=(4*nf,4.),sharex=True,
-                        sharey=True,gridspec_kw={'width_ratios': [1]*nc, 'height_ratios': [1]*nf})
-for f in range(nf):
-    for c in range(nc):
-        Vr = L_Vgal[nc*f+c]/L_Vmax[nc*f+c]
-        zi = zbins[nc*f+c]
-        zf = zbins[nc*f + (c+1)]
-        ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
-        ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
-               grid_color='k', grid_alpha=0.5)
-        ax[f,c].legend(prop={'size':10})
-plt.tight_layout()
-plt.subplots_adjust(hspace=0.0,wspace=0.0)
-plt.show()
-
-# =============================================================================
-nf = 3
-nc = 4
-f,ax = plt.subplots(nf,nc,figsize=(4*nf,4.),sharex=True,
-                        sharey=True,gridspec_kw={'width_ratios': [1]*nc, 'height_ratios': [1]*nf})
-for f in range(nf):
-    for c in range(nc):
-        Vr = L_Vgal[nc*f+c]/L_Vmax[nc*f+c]
-        zi = zbins[nc*f+c]
-        zf = zbins[nc*f + (c+1)]
-        NVr,_ = np.histogram(Vr,bins=20,range=(0,1))
-        N_bar = np.mean(NVr)
-        bc_Vr = _[:-1] + np.diff(_)[0]/2.
-        ax[f,c].step(bc_Vr,NVr/N_bar,where='post',color='b',linestyle='-',label='%.2lf < z < %.2lf'%(zi,zf))
-        ax[f,c].hlines(1.0,0.,1.,linestyle='--',color='k',linewidth=1.5)
-        #ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
-        ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
-               grid_color='k', grid_alpha=0.5)
-ax[f,c].legend(prop={'size':10})
-
-ax[0,0].set_xlim(0,1)
-plt.tight_layout()
-plt.subplots_adjust(hspace=0.0,wspace=0.0)
-plt.show()
-# =============================================================================
-############################
-f,ax = plt.subplots(1,1,figsize=(7,6))
-for c in range(len(L_M)):
-    zi = zbins[c]
-    zf = zbins[c+1]
-    ax.hist(L_M[c],bins=30,range=(M_max,M_min),histtype='step',label = "%.2f < z < %.2f"%(zi,zf),linewidth=2.5)
-ax.tick_params(direction='inout', length=8, width=2, colors='k',
-               grid_color='k', grid_alpha=0.5)
-ax.set_xlabel(r'$M_{i} - 5\log_{10}h$')
-ax.set_ylabel('Counts')
-ax.legend(prop = {'size':10},loc=2)
-plt.tight_layout()
-plt.show()
-#==============================================
-
-f,ax = plt.subplots(1,1,figsize=(7,6))
-for c in range(len(L_LF)):
-    zi = zbins[c]
-    zf = zbins[c+1]
-    ax.plot(bb,np.log10(L_LF[c]),'o-',c=np.random.random(3),ms=5.,label = "%.2f < z < %.2f"%(zi,zf))
-ax.legend(prop={'size':12})
-# =============================================================================
-ax.set_xticks(np.arange(-24,-15,1))
-ax.set_xlim(-24,-16)
-ax.set_yticks(np.arange(-7,-1,1))
-ax.set_ylim(-6.,-1.8)
-ax.legend(prop = {'size':12})
-ax.set_xlabel('$M_{i} - 5\log_{10}h$')
-ax.set_ylabel('$\log\ [dN/V_{max}$ Mpc$^3$/$h^{-3}$ (0.25 mag)$^{-1}]$')
-#plt.savefig('./Dropbox/PhD/Durham/Projects/PAU/figures/July/Mblue_LF_mocks_mi23cut_8zbins_maxcut_2.png',bbox_inches='tight')
-plt.tight_layout()
-plt.show()
-
-# =============================================================================
-lfs = glob('/')

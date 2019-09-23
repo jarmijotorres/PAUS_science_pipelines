@@ -80,13 +80,16 @@ for i in range(len(table)):
                 F_in[c] *= ((dx2 + abs(Ix[c]- xf))/dx)
     P_B.append(np.sum(F_in*dx)/dx0)
 PB = np.array(P_B)
-PAUS_BLUE = PB[(table[:,2]<1.2)&(table[:,2]>0.001)]
-new_table = table[(table[:,2]<1.2)&(table[:,2]>0.001)]
+# ===== PAUS Blue defined only between 0.11 < z < 0.9
+z_low = 0.11
+z_up = 0.9
+PAUS_BLUE = PB[(table[:,2]<z_low)&(table[:,2]>z_up)]
+new_table = table[(table[:,2]<z_low)&(table[:,2]>z_up)]
 mB = -2.5*np.log10(PAUS_BLUE) - 48 # from flux to PAUS magnitud                                                                                                                                                                                                                                                                                                                                                                                                 e
 dL = cosmo.luminosity_distance(new_table[:,2]).value * cosmo.h
 MB = mB - 25 - 5*np.log10(dL)
 new_table = np.vstack([new_table.T,MB]).T
 t = Table(new_table,names=['RA','DEC','Z','SDSS_g','CFHTLS_i','SDSS_r','SDSS_u','SDSS_G','CFHTLS_I','SDSS_R','SDSS_U','SFR Mdot','MB'],)
 print "saving data from "+str(len(MB))+" of " +str(i) + "galaxies in fits format... at /cosma/home/dp004/dc-armi2/PAU_test/catalogs/mocks_MBlue_SDSSphot.fits\n"
-t.write('/cosma/home/dp004/dc-armi2/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_MB_SFR_'+icut+'cut.fits',format='fits')
+t.write('/cosma/home/dp004/dc-armi2/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_MB_SFR_'+icut+'cut._fits',format='fits')
 print "end of program.\n"
