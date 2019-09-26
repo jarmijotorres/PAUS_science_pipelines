@@ -2,13 +2,8 @@ import numpy as np
 from mpi4py import MPI
 import h5py,time
 from glob import glob
-plt.rc('xtick',labelsize=16)
-plt.rc('ytick',labelsize=16)
-plt.rc('xtick',direction='inout')
-plt.rc('ytick',direction='inout')
-plt.rc('axes',linewidth=1.5)
-plt.rc('font',family='sans-serif')
-plt.rc('font',size=16)
+import matplotlib.pyplot as plt
+
 
 ### read snapshot files (sorted in 512 subvolumes, each one with 34 redshift outputs)
 spName = '/data/dega1/ddmn39/galform_out/r504/lightcone_input/Gonzalez13.PAU.MillGas/ivol_0/galaxies.hdf5'
@@ -41,11 +36,11 @@ print('reading snapshots...\n')
 for sn,sv in enumerate(subvols_dir):
     spName = sv + '/galaxies.hdf5'
     sp_ivol = h5py.File(spName,'r')
-    for i in range(4):
-        O_x = np.array(sp_ivol.get("/Output00"+str(i+5)+"/xgal"))
-        O_y = np.array(sp_ivol.get("/Output00"+str(i+5)+"/ygal"))
-        O_z = np.array(sp_ivol.get("/Output00"+str(i+5)+"/zgal"))
-        Mi_obs = np.array(sp_ivol.get("/Output00"+str(i+5)+"/magMio_tot_ext"))
+    for i in range(2):
+        O_x = np.array(sp_ivol.get("/Output00"+str(i+8)+"/xgal"))
+        O_y = np.array(sp_ivol.get("/Output00"+str(i+8)+"/ygal"))
+        O_z = np.array(sp_ivol.get("/Output00"+str(i+8)+"/zgal"))
+        Mi_obs = np.array(sp_ivol.get("/Output00"+str(i+8)+"/magMir_tot_ext"))
         if Mi_obs.any() == None: break
         pos_Mi = np.array([O_x,O_y,O_z,Mi_obs]).T
         if sn == 0: 
@@ -90,7 +85,7 @@ for i in range(len(Ss)):
     L_LF.append(LFs)
 print('saving in: /cosma5/data/dp004/dc-armi2/PAU/PAU_test/data/sLF_125subvols_Vsbox100Mpc_h_s57.npy')
 for l in range(len(Ss)):
-    np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/data/sLF_125subvols_Vsbox100Mpc_h_s_'+str(57-l)+'.npy',L_LF[l])
+    np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/data/sLF_125subvols_Vsbox100Mpc_h_O_'+str(l+8)+'.npy',L_LF[l])
     
 print('\n end of program.\n')
 
@@ -102,15 +97,14 @@ from glob import glob
 import matplotlib.pyplot as plt
 # load info
 sLF_files = glob('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/data/sLF_125subvols_Vsbox100Mpc_h_s_*')
+#sLF_files = glob('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/data/sLF_125subvols_Vsbox100Mpc_h_O_*')
 #details:
     # s57: z = 0.089288
     # s56: z = 0.115883
     # s55: z = 0.144383
     # s54: z = 0.174898
-z57 = 0.089288
-z56 = 0.115883
-z55 = 0.144383
-z54 = 0.174898
+
+zs = [0.089288,0.115883,0.144383,0.174898]
 #
 sLFs = []
 sLF_mean = []

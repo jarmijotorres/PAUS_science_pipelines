@@ -13,7 +13,7 @@ from astropy.io import fits
 from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
 from scipy.optimize import newton#,ridder,bisect,brentq
-sys.path.append('/home/jarmijo/dev_PAUS_science_pipelines/')
+sys.path.append('./dev_PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
 # useful mathematicals definitions
@@ -66,7 +66,7 @@ for i in range(Nc):
 #
 # give to each K(z) function 20 points.
 Ns = 20
-zmin = 0.001 #range valid only for I-band magnitude
+zmin = 0.00 #range valid only for I-band magnitude
 zmax = 1.2
 zbins = np.linspace(zmin,zmax,Ns+1,endpoint=True)#### redshift bins
 Kz_per_color = []
@@ -75,14 +75,26 @@ for i,Ki in enumerate(K_color_bins):
     K_bin, _ = binning_function(Z_binned,Ki,zmin,zmax,Ns,percentile=16)
     Kz_per_color.append(K_bin)
 # =============================================================================
+Kz_per_color = np.load('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_per_color_binning_8cbins_20zbins.npy')
+# =============================================================================
 Kz_functions = []
+Kz_gen = []
 for i,Kc in enumerate(Kz_per_color):
-    ki = interp1d(Kc[:,0],Kc[:,3],kind='linear',fill_value='extrapolate') #K(z) per color interpolations
+    xx = np.append(np.array([0]),Kc[:,0])
+    yy = np.append(np.array([0]),Kc[:,3])
+    ki = interp1d(xx,yy,kind='linear',fill_value='extrapolate') #K(z) per color interpolations
     Kz_functions.append(ki)
-     
+    Kz_gen.append(np.array([xx,yy]).T)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_per_color_binning_8cbins_20zbins.npy',Kz_gen,allow_pickle=True)
 K_binned, _ = binning_function(data1['Z'],Kfc,zmin,zmax,Ns,percentile=16)
-Kmedian = K_binned[:,3] # median all bins
-Kz = interp1d(K_binned[:,0],Kmedian,kind='linear',fill_value='extrapolate')#interpolation
+# ====================================================
+K_binned = np.load('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_median_1cbin_20zbins.npy',allow_pickle=True)
+# ================================================
+xx = np.append(np.array([0]),K_binned[:,0])
+yy = np.append(np.array([0]),K_binned[:,3]) # median all bins
+Kz = interp1d(xx,yy,kind='linear',fill_value='extrapolate')#interpolation
+Kz_median_gen = np.array([xx,yy]).T
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_median_1cbin_20zbins.npy',Kz_median_gen,allow_pickle=True)
   # =============================================================================
 color_id = np.zeros_like(u_g,dtype=int)
 for i,color in enumerate(u_g):
@@ -95,14 +107,29 @@ for i,idc in enumerate(color_id):
     Kz_gals[i] = Kz_functions[idc](data1['Z'][i])
 # Apply this K-correction to all abosultes magnitudes now on
 #========== save new table with Kz corrections per each galaxy =============#
-#Kz_fits = fits.Column(name='Kz_gal',format='D',array=Kz_gals)
-#orig_cols = data1.columns
-#new_col = fits.ColDefs((Kz_fits,))
-#hdu = fits.BinTableHDU.from_columns(orig_cols + new_col)
-#hdu.writeto('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
+Kz_fits = fits.Column(name='Kz_gal',format='D',array=Kz_gals)
+Cid_fits = fits.Column(name='Color_id',format='K',array=color_id)
+orig_cols = data1.columns
+new_cols = fits.ColDefs((Kz_fits,Cid_fits))
+hdu = fits.BinTableHDU.from_columns(orig_cols + new_cols)
+hdu.writeto('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_ColorID_MB_SFR_23cut.fits')
+#
+#
+#
+#
 #=============== load from her if the K-correction was created already ====#
-f2 = fits.open('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_MB_SFR_23cut.fits')
+Kz_per_color = np.load('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_per_color_binning_8cbins_20zbins.npy')
+Kz_functions = []
+for i,Kc in enumerate(Kz_per_color):
+    ki = interp1d(Kc[:,0],Kc[:,1],kind='linear',fill_value='extrapolate') #K(z) per color interpolations
+    Kz_functions.append(ki)
+K_median = np.load('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Kz_median_1cbin_20zbins.npy',allow_pickle=True)
+# ================================================
+Kz = interp1d(K_median[:,0],K_median[:,1],kind='linear',fill_value='extrapolate')#interpolation
+###
+f2 = fits.open('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/catalogs/LCmock_radecz_MiCFHTLS_SDSScolors_Kz_ColorID_MB_SFR_23cut.fits')
 data1 = f2[1].data
+dL = dLum(data1['Z'])
 # =============================================================================
 # Absolute maginute I-band Luminosity function
 Omega_deg = (data1['DEC'].max() - data1['DEC'].min())* (data1['RA'].max() - data1['RA'].min()) # cos(alpha) where alpha is an angle (?) 
@@ -117,21 +144,21 @@ M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log
 bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
 ######################## to get  Vmax #######################
 micut=23
-def get_zmax(Ms,Ks,color_id,Zs,zini,zend):
+def get_zmax(Ms,color_id,zini,zend):
     X0 = micut - Ms - 25.
     fz = lambda x: DM(x) + Kz_functions[color_id](x) - X0
     #fz = lambda x: DM(x) - X0
 #    root = ridder(fz,-0.001,zend)# Choose wisely
-    root = newton(fz,(zini+zend)*0.5,maxiter=int(1e3))
-    if root > zend:
+    root = newton(fz,(zini+zend)*0.3,maxiter=int(1e3),tol=1.48e-05)
+    if root >= zend:
         return zend
-#    elif root <= zini:
-#        return Zs 
     else:
         return root
 #
 get_zmax_v = np.vectorize(get_zmax)
-Nz = 12 # Number of redshift slices to compute the luminosity function
+zmin = 0.00
+zmax = 0.6
+Nz = 4 # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
 L_M = []
@@ -144,11 +171,11 @@ for z in range(Nz):
     zi = zbins[z]
     zf = zbins[z+1]
     N = M_new[(data1['Z']>zi)&(data1['Z']<zf)]
-    K = Kz_gals[(data1['Z']>zi)&(data1['Z']<zf)]
-    C = color_id[(data1['Z']>zi)&(data1['Z']<zf)]
+    #K = Kz_gals[(data1['Z']>zi)&(data1['Z']<zf)]
+    C = data1['color_id'][(data1['Z']>zi)&(data1['Z']<zf)]
     #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
-    Zmax = get_zmax_v(N,K,C,Z,zi,zf)
+    Zmax = get_zmax_v(N,C,zi,zf)
     Vmax = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
     Vgal = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
@@ -159,15 +186,15 @@ for z in range(Nz):
         M_in_bin = N[(N > Mbins[i])&(N < Mbins[i+1])]
         Vi_Mbin.append(Vi)
         LF[i] = np.sum(1./Vi)
-        if len(M_in_bin) > 0:
-            if ~np.isclose(M_in_bin.max(),Mbins[i+1],rtol=1e-3):
-                LF[i] = 0.0
+#        if len(M_in_bin) > 0:
+#            if ~np.isclose(M_in_bin.max(),Mbins[i+1],rtol=1e-3):
+ #               LF[i] = 0.0
     L_LF.append(LF)
     L_M.append(N)
     L_Vmax.append(Vmax)
     L_Vgal.append(Vgal)
     #L_B.append(B)
-e_t = time.process_time() - t
+e_t = time.process_time() - t 
 #
 L_LF = np.array(L_LF)
 L_M = np.array(L_M)

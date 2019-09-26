@@ -4,8 +4,13 @@ plt.rc('ytick',labelsize=16)
 plt.rc('xtick',direction='inout')
 plt.rc('ytick',direction='inout')
 plt.rc('axes',linewidth=1.5)
-plt.rc('font',family='sans-serif')
+plt.rc('font',family='Osaka')
 plt.rc('font',size=16)
+#plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+## for Palatino and other serif fonts use:
+#plt.rc('font',**{'family':'sans-serif','sans-serif':['Palatino']})
+#plt.rc('text', usetex=True)
+
 #
 nf = 3
 nc = 4
@@ -100,5 +105,5 @@ l2 = ax.legend(c2,["$0.1 < z < 0.2$"])
 ax.add_artist(l1)
 ax.add_artist(l2)
 plt.tight_layout()
-plt.savefig('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/figures/LF_s_lc_Mm16m24_dM0.25_z57_zbin0_mi23cut.png',bbox_inches= 'tight')
+#plt.savefig('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/figures/LF_s_lc_Mm16m24_dM0.25_z57_zbin0_mi23cut.png',bbox_inches= 'tight')
 plt.show()
