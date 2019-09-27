@@ -61,8 +61,8 @@ get_zmax_v = np.vectorize(get_zmax)
 
 zmin = 0.00
 zmax = 1.2
-#Nz = 12 # Number of redshift slices to compute the luminosity function
-#zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
+Nz = 10 # Number of redshift slices to compute the luminosity function
+zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 #zb = 0 #from z to 12
 #zi = zbins[z]
 #zf = zbins[z+1]

@@ -4,12 +4,12 @@ plt.rc('ytick',labelsize=16)
 plt.rc('xtick',direction='inout')
 plt.rc('ytick',direction='inout')
 plt.rc('axes',linewidth=1.5)
-plt.rc('font',family='Osaka')
-plt.rc('font',size=16)
+plt.rc('font',family='DejaVu sans')
+plt.rc('font',size=20)
 #plt.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 ## for Palatino and other serif fonts use:
 #plt.rc('font',**{'family':'sans-serif','sans-serif':['Palatino']})
-#plt.rc('text', usetex=True)
+plt.rc('text', usetex=True)
 
 #
 nf = 3
@@ -47,7 +47,7 @@ for f in range(nf):
         #ax[f,c].hist(Vr,bins=20,range=(0,1),histtype='step',label = "%.2f < z < %.2f"%(zi,zf))
         ax[f,c].tick_params(direction='inout', length=8, width=2, colors='k',
                grid_color='k', grid_alpha=0.5)
-ax[f,c].legend(prop={'size':10})
+        ax[f,c].legend(prop={'size':10})
 
 ax[0,0].set_xlim(0,1)
 plt.tight_layout()

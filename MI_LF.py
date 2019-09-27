@@ -12,7 +12,7 @@ import time,sys ### for py3
 from astropy.io import fits
 from astropy.cosmology import WMAP7 as cosmo
 from scipy.interpolate import interp1d
-from scipy.optimize import newton#,ridder,bisect,brentq
+from scipy.optimize import newton,brentq#,ridder,bisect,brentq
 sys.path.append('./dev_PAUS_science_pipelines/')
 from binning_data import binning_function
 from glob import glob
@@ -144,12 +144,13 @@ M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log
 bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
 ######################## to get  Vmax #######################
 micut=23
-def get_zmax(Ms,color_id,zini,zend):
+def get_zmax(Ms,Zs,color_id,zini,zend):
     X0 = micut - Ms - 25.
     fz = lambda x: DM(x) + Kz_functions[color_id](x) - X0
     #fz = lambda x: DM(x) - X0
 #    root = ridder(fz,-0.001,zend)# Choose wisely
-    root = newton(fz,(zini+zend)*0.3,maxiter=int(1e3),tol=1.48e-05)
+    #root = newton(fz,(zini+zend)*0.3,maxiter=int(1e3),tol=1.48e-05)
+    root = brentq(fz,Zs,2.,maxiter=int(1e2),xtol=1.01e-05)
     if root >= zend:
         return zend
     else:
@@ -157,8 +158,8 @@ def get_zmax(Ms,color_id,zini,zend):
 #
 get_zmax_v = np.vectorize(get_zmax)
 zmin = 0.00
-zmax = 0.6
-Nz = 4 # Number of redshift slices to compute the luminosity function
+zmax = 1.2
+Nz = 10 # Number of redshift slices to compute the luminosity function
 zbins = np.linspace(zmin,zmax,Nz+1,endpoint=True)#### redshift bins
 L_LF = []
 L_M = []
@@ -166,6 +167,7 @@ L_M = []
 L_Vmax = []
 L_Vgal = []
 Vi_Mbin = []
+L_Z = []
 t = time.process_time()
 for z in range(Nz):
     zi = zbins[z]
@@ -175,7 +177,7 @@ for z in range(Nz):
     C = data1['color_id'][(data1['Z']>zi)&(data1['Z']<zf)]
     #B = data1['MB'][(data1['Z']>zi)&(data1['Z']<zf)] # only available for the z = 0.11-0.9 catalog version
     Z = data1['Z'][(data1['Z']>zi)&(data1['Z']<zf)]
-    Zmax = get_zmax_v(N,C,zi,zf)
+    Zmax = get_zmax_v(N,Z,C,zi,zf)
     Vmax = Omega_rad/3. * (dcomv(Zmax)**3. - dcomv(zi)**3)
     Vgal = Omega_rad/3. * (dcomv(Z)**3. - dcomv(zi)**3)
     # In each bin of the histogram find the minimum and maximum redshift 
@@ -191,6 +193,7 @@ for z in range(Nz):
  #               LF[i] = 0.0
     L_LF.append(LF)
     L_M.append(N)
+    L_Z.append(Z)
     L_Vmax.append(Vmax)
     L_Vgal.append(Vgal)
     #L_B.append(B)
@@ -198,16 +201,19 @@ e_t = time.process_time() - t
 #
 L_LF = np.array(L_LF)
 L_M = np.array(L_M)
+L_Z = np.array(L_Z)
 #L_B = np.array(L_B)
 L_Vmax = np.array(L_Vmax)
 L_Vgal = np.array(L_Vgal)
-np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LLF_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_LF)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LLF_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+str(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_LF)
 
-np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LMi_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_M,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LZ_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+str(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_M,allow_pickle=True)
+
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LMi_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+str(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_M,allow_pickle=True)
 
 #np.save('/Users/jarmijo/Documents/Mocks/MB_8bins_z0.11_z.9_mi23cut.npy',L_B,allow_pickle=True)
 
-np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVmax_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVmax_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+str(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vmax,allow_pickle=True)
 
-np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVgal_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+"{:10.2f}".format(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
+np.save('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/LVgal_Mim'+str(abs(M_max))+'_m'+str(abs(M_min))+'_dM'+str(dM)+'_z'+str(zmin)+'_'+str(zmax)+'_'+str(Nz)+'zbins_Kcorr8cbins_mi23cut.npy',L_Vgal,allow_pickle=True)
 ################################################
