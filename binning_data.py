@@ -5,12 +5,12 @@
 import numpy as np
 #import sys
 
-def binning_function(X,Y,bl,bu,Nb,percentile=50):
+def binning_function(X,Y,bl,bu,Nb,percentile=68):
     """
     binning scattered data between bl, bu with Nb number of bins.
     
     """
-    p = percentile 
+    p = 50 + percentile/2.
     #bl = 0.11#sys.argv[1]
     #bu = 0.9#sys.argv[2]
     #Nb = 16#sys.argv[3]
