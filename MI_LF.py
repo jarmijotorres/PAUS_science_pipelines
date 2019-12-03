@@ -140,7 +140,7 @@ M_max = -24.
 Mbins= np.linspace(M_max,M_min,b+1,endpoint=True)
 dM = abs(M_max-M_min)/(b) # Nb = 32 between (-16,-24) --> dM = 0.25 (Nb = 40 --> dM = 0.2 for the same range)
 #########################################################
-M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log10(1+data1['Z']) # New I-band 
+#M_new = data1['CFHTLS_i'] - 25. - 5*np.log10(dL) - data1['Kz_gal'] #+ 2.5*np.log10(1+data1['Z']) # New I-band 
 bb = Mbins[:-1] + np.diff(Mbins)[0]/2.
 ######################## to get  Vmax #######################
 micut=23
