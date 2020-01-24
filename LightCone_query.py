@@ -117,3 +117,21 @@ cat_path = '../test.fits'
 cat.write(cat_path,format='fits',overwrite=True)
 cat.write('/home/jarmijo/Dropbox/test_LC.fits',format='fits',overwrite=True)
 print("cata created saved in /home/jarmijo/Dropbox/test_LC.fits...\n")
+
+#some plots
+ra_rad = np.radians(LC['ra'])
+ra_rad -= np.pi/2.
+Mh = LC['halo_mass']*1e10
+bc = (Mh>1e14)&(LC['dec'] > 0.)&(LC['dec']<1.)
+bd = (LC['dec'] > 0.)&(LC['dec']<1.)
+f = plt.figure(figsize=(12,8))
+ax = f.add_subplot(111,projection='polar')
+ax.scatter(ra_rad[bd],LC['z_obs'][bd],c='k',s=0.05,zorder=1)
+ax.scatter(ra_rad[bc],LC['z_cos'][bc],c='r',s=0.05,marker='*',zorder=10)
+ax.set_rorigin(0.0)
+ax.set_rlim(0.15,0.4)
+ramin = ra_rad.min(); ramax = ra_rad.max()
+ax.set_thetalim(ramin,ramax)
+ax.grid(False)
+ax.set_xticks([])
+plt.show()

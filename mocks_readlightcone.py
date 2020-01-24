@@ -6,8 +6,8 @@ import h5py
 
 #LIGHTCONE FILENAMES
 #lcCoreFilename = "/cosma5/data/durham/jarmijo/mocks_Durham/Gonzalez13.PAU.MillGas.field1.core.0.hdf5"
-lcCoreFilename = '/Users/jarmijo/Documents/Mocks/Gonzalez13.PAU.MillGas.field1.core.0.hdf5'
-lcPhotometryFilename = "/cosma5/data/durham/jarmijo/mocks_Durham/Gonzalez13.PAU.MillGas.field1.photometry.0.hdf5"
+lcCoreFilename = '/cosma5/data/dp004/dc-armi2/LC_PAUS/Gonzalez13.PAU.MillGas.field1.core.0.hdf5'
+lcPhotometryFilename = "/cosma5/data/dp004/dc-armi2/LC_PAUS/Gonzalez13.PAU.MillGas.field1.photometry.0.hdf5"
 #lcEmlineFilename = "Gonzalez13.PAU.MillGas.field1.emlines.0.hdf5"
 #lcKinematicsFilename = "Gonzalez13.PAU.MillGas.field1.kinematics.0.hdf5"
 
