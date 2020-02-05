@@ -48,10 +48,10 @@ Sh5 = h5py.File('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/outputs_pipelines/Mibr
 c = np.array(Sh5['data'])
 Mi_broad = c['Mi']
 
-narrow_mags = []
-for i in range(23,40):
-    narrow_mags.append(c['NB_%d'%i])
-narrow_mags = np.array(narrow_mags).T
+NB_mags = []
+for i in range(22,41):
+    NB_mags.append(c['NB_%d'%i])
+NB_mags = np.array(NB_mags).T
 
 #load PAUS narrow band responses
 l = np.sort(glob('/cosma/home/dp004/dc-armi2/PAU_test/filters/PAUS_*_band_nt.dat'))
@@ -78,20 +78,15 @@ for i in range(40):
 c_nm*=100
 c_nm+=50 #locate in the band centre
 #for the i-band the bands goes from
-wfi = np.zeros(len(range(23,40)))
-for i in range(wfi):
-    wfi[i] = Mi_broad_function(c_nm[i])/NB_functions[i+23](c_nm[i+23])
+f_NBs_Mi = NB_response[22:41]
+wfi = np.zeros(len(f_NBs_Mi))
+for i in range(len(wfi)):
+    wfi[i] = Mi_broad_function(c_nm[i+22])/NB_functions[i+22](c_nm[i+22])
 #
 
-Mi_narrow = []
-for i in range(10):
-    flux = 10**((narrow_mags[i]+48.6)/-2.5)
-    fi = np.dot(flux * wfi)
-    mi = -2.5*np.log10(fi) - 48.6
-    Mi_narrow.append(mi)
 
 #find intersections between narrowbands
-f_NBs_Mi = NB_response[23:40]
+
 L = f_NBs_Mi
 roots = []
 for i in range(len(L)-1):
@@ -114,19 +109,12 @@ for i in range(len(L)-1):
 rs = np.array(roots)
 
 ##### NB integration considering weights and overlap
-l = np.sort(glob('/cosma/home/dp004/dc-armi2/PAU_test/filters/PAUS_*_band_nt.dat'))
-NB_response_n = []
-for i in l:
-    NB_r = np.loadtxt(i)
-    #NB_r[:,1] /= np.max(NB_r[:,1]) #normalized between 0 and 1
-    NB_response_n.append(NB_r)
-wfi2 = np.zeros(len(f_NBs_Mi))
+wfi2 = np.zeros(len(f_NBs_Mi)) #including NB range in the i-band window
 NB_area = np.zeros(len(f_NBs_Mi))
-for i in range(len(f_NBs_Mi)):
+for i in range(len(wfi2)):
     nb = f_NBs_Mi[i]
-    nb_n = NB_response_n[i+23]
     dl = np.diff(nb[:,0])[0]
-    NB_area[i] = trapz(nb_n[:,1],dx=dl)
+    NB_area[i] = trapz(nb[:,1],dx=dl)
     if i == 0:
         Fa = trapz(nb[:,1],dx=dl)
         Fb = trapz(nb[:,1][nb[:,0]<rs[i]],dx=dl)
@@ -144,10 +132,10 @@ for i in range(len(f_NBs_Mi)):
         wfi2[i] = c
 
 
-
-Mi_narrow = np.zeros(len(narrow_mags))
+Mi_narrow = np.zeros(len(NB_mags))
 for i in range(len(Mi_narrow)):
-    flux = 10**((narrow_mags[i]+48.6)/-2.5)
+    flux = 10**((NB_mags[i]+48.6)/-2.5)
+    flux *= (NB_area/Mi_broad_area)
     F = np.dot(flux,(wfi*wfi2))#including 2 weigths
     Mi_narrow[i] =  -2.5*np.log10(F) - 48.6
 
@@ -174,6 +162,18 @@ ax.set_xlim(6600,8700)
 #plt.savefig('/cosma5/data/dp004/dc-armi2/PAU/PAU_test/figures/January2020/NBMi_CFHTMi_integration_nooverlap_wa.png')
 plt.show()
 #
+
+f,ax = plt.subplots(1,1,figsize=(12,6))
+ax.plot(CFHT_Mi_response[:,0],CFHT_Mi_response[:,1],c='darkred')
+for i in range(len(f_NBs_Mi)):
+    nb = f_NBs_Mi[i]
+    ax.plot(nb[:,0],nb[:,1]*wfi[i])
+ax.set_xlim(6600,8700)
+ax.set_xlabel(r'$\lambda$ [\AA]')
+ax.set_ylabel(r'$R(\lambda)$')
+ax.set_title('Same effective area')
+plt.show()  
+
 
 ##########################
 
